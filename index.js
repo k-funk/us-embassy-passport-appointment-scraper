@@ -1,6 +1,7 @@
 import rp from 'request-promise-native' // TODO: this package is deprecated. use another
 import chalk from 'chalk'
 import cheerio from 'cheerio'
+import notifier from 'node-notifier'
 
 import { SAMPLE_RESULT_WITHOUT_DATE, SAMPLE_RESULT_WITH_DATE } from './sample_htmls.js'
 
@@ -8,6 +9,7 @@ import { SAMPLE_RESULT_WITHOUT_DATE, SAMPLE_RESULT_WITH_DATE } from './sample_ht
 const CSRF_REGEX = /CSRFToken=(\w*)\'/
 const MONTHS = [4, 5, 6, 7, 8] // ints that represent months to be checked
 const YEAR = 2021
+const CALL_INTERVAL = 1000 * 60 * 5 // 5 minutes
 
 async function getCookieAndCSRFToken() {
   try {
@@ -51,7 +53,7 @@ function makeMonthRequestPromise(cookie, csrfToken, month) {
   })
 }
 
-async function main() {
+async function task(options = { quiet: true }) {
   try {
     const { cookie, csrfToken } = await getCookieAndCSRFToken()
 
@@ -64,12 +66,18 @@ async function main() {
     })
 
     if (monthsWithAvailableAppts.some(monthObj => monthObj.available)) {
-      console.log(chalk.green('Appointment(s) available!'))
+      const msg = 'Appointment(s) available!'
+      notifier.notify(msg)
+      console.log(chalk.green(msg))
       console.log(monthsWithAvailableAppts)
       return
     }
 
-    console.log(`No available appointments for months ${MONTHS.join(', ')}`)
+    if (options.quiet) {
+      process.stdout.write('.')
+    } else {
+      console.log(`No available appointments for months ${MONTHS.join(', ')}`)
+    }
   } catch (err) {
     if (err.statusCode) {
       console.error(chalk.red('HTTP Error:', err.statusCode))
@@ -79,6 +87,11 @@ async function main() {
     console.error(chalk.red('Error\n=====\n'))
     console.error(err)
   }
+}
+
+async function main() {
+  task({ quiet: false })
+  setInterval(task, CALL_INTERVAL)
 }
 
 main()
