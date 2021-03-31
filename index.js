@@ -1,4 +1,5 @@
 import rp from 'request-promise-native' // TODO: this package is deprecated. use another
+import chalk from 'chalk'
 import cheerio from 'cheerio'
 
 import { SAMPLE_RESULT_WITHOUT_DATE, SAMPLE_RESULT_WITH_DATE } from './sample_htmls.js'
@@ -63,19 +64,20 @@ async function main() {
     })
 
     if (monthsWithAvailableAppts.some(monthObj => monthObj.available)) {
-      console.log('Appointment(s) available!')
+      console.log(chalk.green('Appointment(s) available!'))
       console.log(monthsWithAvailableAppts)
       return
     }
 
-    console.log(`No available appointments between months ${MONTHS[0]} and ${MONTHS[MONTHS.length -1]}`)
+    console.log(`No available appointments for months ${MONTHS.join(', ')}`)
   } catch (err) {
     if (err.statusCode) {
-      console.error('HTTP Error:', err.statusCode)
+      console.error(chalk.red('HTTP Error:', err.statusCode))
       return
     }
 
-    console.error('Error\n=====\n', err)
+    console.error(chalk.red('Error\n=====\n'))
+    console.error(err)
   }
 }
 
