@@ -15,16 +15,16 @@ async function getCookieAndCSRFToken() {
       resolveWithFullResponse: true,
     })
 
-    const result = {
-      cookie: resp.headers['set-cookie'][0].split(';')[0], // get the first cookie
-      // could use cheerio, but evaluating all html as a string seems easier. the same CSRF token
-      // appears twice on the page, in this same format
-      csrfToken: resp.body.match(CSRF_REGEX)[1], // index 1 is the first group match
-    }
-    console.log(result)
-    return result
+    const cookie = resp.headers['set-cookie'][0].split(';')[0] // get the first cookie
+    // could use cheerio, but evaluating all html as a string seems easier. the same CSRF token
+    // appears twice on the page, in this same format
+    const csrfToken = resp.body.match(CSRF_REGEX)[1] // index 1 is the first group match
+
+    if (!cookie || ! csrfToken) { throw new Error() }
+
+    return { cookie, csrfToken }
   } catch(err) {
-    throw new Error('Failed to get cookie')
+    throw new Error('Failed to get cookie or csrf token')
   }
 }
 
