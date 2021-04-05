@@ -69,8 +69,9 @@ async function task(options = { quiet: true }) {
     const { cookie, csrfToken } = await getCookieAndCSRFToken()
     results = await fetchMonths(cookie, csrfToken)
   } catch (err) {
-    console.error(chalk.red('Error\n====='))
+    console.error(chalk.red('\nError\n====='))
     console.error(typeof err.message === 'string' ? chalk.red(err.message) : err)
+    return
   }
 
   const monthsWithAvailableAppts = results.map((resultHtml, idx) => {
@@ -81,7 +82,7 @@ async function task(options = { quiet: true }) {
   if (monthsWithAvailableAppts.some(monthObj => monthObj.available)) {
     const msg = 'Appointment(s) available!'
     notifier.notify(msg)
-    console.log(chalk.green(msg))
+    console.log(chalk.green(`\n${msg}`))
     console.log(monthsWithAvailableAppts)
     return
   }
@@ -91,8 +92,6 @@ async function task(options = { quiet: true }) {
   } else { // for individual runs, or first of a setInterval run
     console.log(`No available appointments for months ${MONTHS.join(', ')}`)
   }
-
-  console.log('\n')
 }
 
 async function main() {
