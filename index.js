@@ -69,11 +69,6 @@ async function task(options = { quiet: true }) {
     const { cookie, csrfToken } = await getCookieAndCSRFToken()
     results = await fetchMonths(cookie, csrfToken)
   } catch (err) {
-    if (err.statusCode) {
-      console.error(chalk.red('HTTP Error:', err.statusCode))
-      return
-    }
-
     console.error(chalk.red('Error\n====='))
     console.error(typeof err.message === 'string' ? chalk.red(err.message) : err)
   }
