@@ -9,7 +9,7 @@ import { SAMPLE_RESULT_WITHOUT_DATE, SAMPLE_RESULT_WITH_DATE } from './sample_ht
 const CSRF_REGEX = /CSRFToken=(\w*)\'/
 const MONTHS = [4, 5, 6, 7, 8] // ints that represent months to be checked
 const YEAR = 2021
-const CALL_INTERVAL = 1000 * 60 * 5 // 5 minutes
+const CALL_INTERVAL = 1000 * 60 * 3.5 // 3.5 minutes
 
 async function getCookieAndCSRFToken() {
   let response
