@@ -6,10 +6,14 @@ import notifier from 'node-notifier'
 import { SAMPLE_RESULT_WITHOUT_DATE, SAMPLE_RESULT_WITH_DATE } from './sample_htmls.js'
 
 
-const CSRF_REGEX = /CSRFToken=(\w*)\'/
-const MONTHS = [4, 5, 6, 7, 8] // ints that represent months to be checked
+// TODO: these values should be cli params
+const MONTHS = [4, 5, 6, 7] // ints that represent months to be checked
 const YEAR = 2021
-const CALL_INTERVAL = 1000 * 60 * 3.5 // 3.5 minutes
+const CALL_INTERVAL_MINUTES = 2
+
+const CALL_INTERVAL_MS = 1000 * 60 * CALL_INTERVAL_MINUTES
+const CSRF_REGEX = /CSRFToken=(\w*)\'/
+
 
 async function getCookieAndCSRFToken() {
   let response
@@ -96,7 +100,7 @@ async function task(options = { quiet: true }) {
 
 async function main() {
   task({ quiet: false })
-  setInterval(task, CALL_INTERVAL)
+  setInterval(task, CALL_INTERVAL_MS)
 }
 
 main()
