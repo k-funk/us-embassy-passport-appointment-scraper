@@ -7,8 +7,9 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 
 import { SAMPLE_RESULT_WITHOUT_DATE, SAMPLE_RESULT_WITH_DATE } from './sample_htmls.js'
 
-
-puppeteer.use(StealthPlugin())
+const stealthPlugin = StealthPlugin()
+stealthPlugin.enabledEvasions.delete('user-agent-override') // https://github.com/berstend/puppeteer-extra/issues/421#issuecomment-773656458
+puppeteer.use(stealthPlugin)
 
 // TODO: these values should be cli params
 const MONTHS = [10, 11] // ints that represent months to be checked
