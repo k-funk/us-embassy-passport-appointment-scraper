@@ -5,7 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "start:debug": "NODE_DEBUG=http npm run start",
+    "murder": "kill -9 $(ps aux | grep -e '[n]pm run' -e '[n]ode' | awk '{print $2}')"
   },
   "keywords": [],
   "author": "",
@@ -14,6 +16,9 @@
     "chalk": "^4.1.0",
     "cheerio": "^1.0.0-rc.5",
     "node-fetch": "^2.6.1",
-    "node-notifier": "^9.0.1"
+    "node-notifier": "^9.0.1",
+    "puppeteer": "^10.1.0",
+    "puppeteer-extra": "^3.1.18",
+    "puppeteer-extra-plugin-stealth": "^2.7.8"
   }
 }

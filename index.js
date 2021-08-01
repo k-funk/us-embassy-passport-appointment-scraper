@@ -2,55 +2,82 @@ import fetch from 'node-fetch'
 import chalk from 'chalk'
 import cheerio from 'cheerio'
 import notifier from 'node-notifier'
+import puppeteer from 'puppeteer-extra'
+import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 
 import { SAMPLE_RESULT_WITHOUT_DATE, SAMPLE_RESULT_WITH_DATE } from './sample_htmls.js'
 
 
+puppeteer.use(StealthPlugin())
+
 // TODO: these values should be cli params
-const MONTHS = [4, 5, 6, 7] // ints that represent months to be checked
+const MONTHS = [10, 11] // ints that represent months to be checked
 const YEAR = 2021
 const CALL_INTERVAL_MINUTES = 2
 
 const CALL_INTERVAL_MS = 1000 * 60 * CALL_INTERVAL_MINUTES
 const CSRF_REGEX = /CSRFToken=(\w*)\'/
+const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.164 Safari/537.36'
+const DEFAULT_HEADERS = {
+  'Connection': 'keep-alive',
+  'sec-ch-ua': '"Google Chrome";v="89", "Chromium";v="89", ";Not A Brand";v="99"',
+  'sec-ch-ua-mobile': '?0',
+  'Upgrade-Insecure-Requests': '1',
+  'User-Agent': USER_AGENT,
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+  'Sec-Fetch-Site': 'same-origin',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-User': '?1',
+  'Sec-Fetch-Dest': 'document',
+  'Referer': 'https://evisaforms.state.gov/acs/make_calendar.asp?CSRFToken=AD406CCFF7524F7383E13726D05205CD&nMonth=10&nYear=2021&type=1&servicetype=06&pc=SNJ',
+  'Accept-Language': 'en-US,en;q=0.9,es;q=0.8',
+}
 
-
+/**
+ * Working as of Summer 2021. Previous commits have the old strategy.
+ */
 async function getCookieAndCSRFToken() {
-  let response
+  // for debugging. one metric of knowing if we're being detected as a bot
+  // const url = 'https://arh.antoinevastel.com/bots/areyouheadless'
+  const url = 'https://evisaforms.state.gov/acs/default.asp?postcode=SNJ&appcode=1'
+  let browser
+  let cookiesString
+  let csrfToken
   try {
-    response = await fetch('https://evisaforms.state.gov/acs/default.asp?postcode=SNJ&appcode=1')
-    if (!response.ok) throw Error(response.status)
-  } catch(err) {
-    throw new Error(`Failed to get cookie or csrf token${err.code ? `: ${err.code}` : `\n${JSON.stringify(err)}`}`)
+    browser = await puppeteer.launch({
+      // headless: false,
+      // devtools: true,
+      // slowMo: true,
+      // defaultViewport: { // not sure this works
+      //   width: 800,
+      //   height: 800,
+      // },
+      // waitForInitialPage: true,
+    })
+    const page = await browser.newPage()
+    page.setExtraHTTPHeaders({ ...DEFAULT_HEADERS })
+    await page.setUserAgent(USER_AGENT)
+    await page.goto(url, { waitUntil: 'networkidle0' })
+    await page.waitForNavigation({ waitUntil: 'networkidle0' })
+    const cookies = await page.cookies()
+    const content = await page.content()
+
+    cookiesString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ')
+    // could use cheerio, but evaluating all html as a string seems easier. the same CSRF token
+    // appears twice on the page, in this same format
+    csrfToken = content.match(CSRF_REGEX)[1] // index 1 is the first group match
+  } finally {
+    if (browser) { await browser.close() }
   }
 
-  const text = await response.text()
-
-  const cookie = response.headers.get('set-cookie').split(';')[0] // get the first cookie
-  // could use cheerio, but evaluating all html as a string seems easier. the same CSRF token
-  // appears twice on the page, in this same format
-  const csrfToken = text.match(CSRF_REGEX)[1] // index 1 is the first group match
-
-  if (!cookie || ! csrfToken) { throw new Error('Unable to extract cookie/csrf token from response') }
-
-  return { cookie, csrfToken }
+  if (!cookiesString || ! csrfToken) { throw new Error('Unable to extract cookie/csrf token from response') }
+  return { cookiesString, csrfToken }
 }
 
 function makeMonthRequestPromise(cookie, csrfToken, month) {
   return fetch(`https://evisaforms.state.gov/acs/make_calendar.asp?CSRFToken=${csrfToken}&nMonth=${month}&nYear=${YEAR}&type=1&servicetype=06&pc=SNJ`, {
     headers: {
-      'Connection': 'keep-alive',
-      'sec-ch-ua': '"Google Chrome";v="89", "Chromium";v="89", ";Not A Brand";v="99"',
-      'sec-ch-ua-mobile': '?0',
-      'Upgrade-Insecure-Requests': '1',
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-      'Sec-Fetch-Site': 'same-origin',
-      'Sec-Fetch-Mode': 'navigate',
-      'Sec-Fetch-User': '?1',
-      'Sec-Fetch-Dest': 'document',
-      'Referer': 'https://evisaforms.state.gov/acs/make_calendar.asp?CSRFToken=AD406CCFF7524F7383E13726D05205CD&nMonth=10&nYear=2021&type=1&servicetype=06&pc=SNJ',
-      'Accept-Language': 'en-US,en;q=0.9,es;q=0.8',
+      ...DEFAULT_HEADERS,
       'Cookie': cookie,
     },
   })
@@ -70,11 +97,11 @@ async function fetchMonths(cookie, csrfToken) {
 async function task(options = { quiet: true }) {
   let results
   try {
-    const { cookie, csrfToken } = await getCookieAndCSRFToken()
-    results = await fetchMonths(cookie, csrfToken)
+    const { cookiesString, csrfToken } = await getCookieAndCSRFToken()
+    results = await fetchMonths(cookiesString, csrfToken)
   } catch (err) {
     console.error(chalk.red('\nError\n====='))
-    console.error(typeof err.message === 'string' ? chalk.red(err.message) : err)
+    console.error(err)
     return
   }
 
