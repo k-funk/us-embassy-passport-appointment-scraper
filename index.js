@@ -13,7 +13,7 @@ puppeteer.use(stealthPlugin)
 
 // TODO: these values should be cli params
 const MONTHS = [10, 11] // ints that represent months to be checked
-const YEAR = 2021
+const YEAR = 2022
 const CALL_INTERVAL_MINUTES = 2
 
 const CALL_INTERVAL_MS = 1000 * 60 * CALL_INTERVAL_MINUTES
