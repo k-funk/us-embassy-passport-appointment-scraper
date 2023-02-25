@@ -15,6 +15,13 @@ puppeteer.use(stealthPlugin)
 const MONTHS = [10, 11] // ints that represent months to be checked
 const YEAR = 2022
 const CALL_INTERVAL_MINUTES = 2
+// Get from manually loading scheduling web site, format like this
+// https://evisaforms.state.gov/acs/default.asp?postcode=SNJ&appcode=1
+// for paris
+// const EMBASSY = `PRS'
+// for costa rica
+const EMBASSY = 'SNJ'
+
 
 const CALL_INTERVAL_MS = 1000 * 60 * CALL_INTERVAL_MINUTES
 const CSRF_REGEX = /CSRFToken=(\w*)\'/
@@ -30,7 +37,7 @@ const DEFAULT_HEADERS = {
   'Sec-Fetch-Mode': 'navigate',
   'Sec-Fetch-User': '?1',
   'Sec-Fetch-Dest': 'document',
-  'Referer': 'https://evisaforms.state.gov/acs/make_calendar.asp?CSRFToken=AD406CCFF7524F7383E13726D05205CD&nMonth=10&nYear=2021&type=1&servicetype=06&pc=SNJ',
+  'Referer': 'https://evisaforms.state.gov/acs/make_calendar.asp?CSRFToken=AD406CCFF7524F7383E13726D05205CD&nMonth=10&nYear=2021&type=1&servicetype=06&pc=' + EMBASSY,
   'Accept-Language': 'en-US,en;q=0.9,es;q=0.8',
 }
 
@@ -40,7 +47,7 @@ const DEFAULT_HEADERS = {
 async function getCookieAndCSRFToken() {
   // for debugging. one metric of knowing if we're being detected as a bot
   // const url = 'https://arh.antoinevastel.com/bots/areyouheadless'
-  const url = 'https://evisaforms.state.gov/acs/default.asp?postcode=SNJ&appcode=1'
+  const url = 'https://evisaforms.state.gov/acs/default.asp?appcode=1&postcode=' + EMBASSY
   let browser
   let cookiesString
   let csrfToken
@@ -76,7 +83,7 @@ async function getCookieAndCSRFToken() {
 }
 
 function makeMonthRequestPromise(cookie, csrfToken, month) {
-  return fetch(`https://evisaforms.state.gov/acs/make_calendar.asp?CSRFToken=${csrfToken}&nMonth=${month}&nYear=${YEAR}&type=1&servicetype=06&pc=SNJ`, {
+  return fetch(`https://evisaforms.state.gov/acs/make_calendar.asp?CSRFToken=${csrfToken}&nMonth=${month}&nYear=${YEAR}&type=1&servicetype=06&pc=${EMBASSY}`, {
     headers: {
       ...DEFAULT_HEADERS,
       'Cookie': cookie,
@@ -122,7 +129,7 @@ async function task(options = { quiet: true }) {
   if (options.quiet) { // for running with setInterval
     process.stdout.write('.')
   } else { // for individual runs, or first of a setInterval run
-    console.log(`No available appointments for months ${MONTHS.join(', ')}`)
+    console.log(`No available appointments for months ${MONTHS.join(', ')} in ${EMBASSY}`)
   }
 }
 
