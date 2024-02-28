@@ -4,6 +4,7 @@ import cheerio from 'cheerio'
 import notifier from 'node-notifier'
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
+import inquirer from 'inquirer'
 
 import { SAMPLE_RESULT_WITHOUT_DATE, SAMPLE_RESULT_WITH_DATE } from './sample_htmls.js'
 
@@ -14,12 +15,17 @@ puppeteer.use(stealthPlugin)
 // TODO: these values should be cli params
 const MONTHS = [10, 11] // ints that represent months to be checked
 const YEAR = 2022
+
+// using current year and months
+var DATES = [];
+const MONTHS_LOOKAHEAD = 4
+
 const CALL_INTERVAL_MINUTES = 2
 const EMBASSIES = {
   SANJOSE: { postCode: 'SNJ', displayName: 'San Jose, Costa Rica' },
   PARIS: { postCode: 'PRS', displayName: 'Paris, France' },
 }
-const EMBASSY = EMBASSIES.SANJOSE
+var EMBASSY = EMBASSIES.SANJOSE
 
 
 const CALL_INTERVAL_MS = 1000 * 60 * CALL_INTERVAL_MINUTES
@@ -65,7 +71,7 @@ async function getCookieAndCSRFToken() {
     page.setExtraHTTPHeaders({ ...DEFAULT_HEADERS })
     await page.setUserAgent(USER_AGENT)
     await page.goto(url, { waitUntil: 'networkidle0' })
-    await page.waitForNavigation({ waitUntil: 'networkidle0' })
+//    await page.waitForNavigation({ waitUntil: 'networkidle0' })
     const cookies = await page.cookies()
     const content = await page.content()
 
@@ -81,8 +87,8 @@ async function getCookieAndCSRFToken() {
   return { cookiesString, csrfToken }
 }
 
-function makeMonthRequestPromise(cookie, csrfToken, month) {
-  return fetch(`https://evisaforms.state.gov/acs/make_calendar.asp?CSRFToken=${csrfToken}&nMonth=${month}&nYear=${YEAR}&type=1&servicetype=06&pc=${EMBASSY}`, {
+function makeMonthRequestPromise(cookie, csrfToken, month, year) {
+  return fetch(`https://evisaforms.state.gov/acs/make_calendar.asp?CSRFToken=${csrfToken}&nMonth=${month}&nYear=${year}&type=1&servicetype=06&pc=${EMBASSY.postCode}`, {
     headers: {
       ...DEFAULT_HEADERS,
       'Cookie': cookie,
@@ -91,7 +97,7 @@ function makeMonthRequestPromise(cookie, csrfToken, month) {
 }
 
 async function fetchMonths(cookie, csrfToken) {
-  const requests = MONTHS.map(month => makeMonthRequestPromise(cookie, csrfToken, month))
+  const requests = DATES.map(date => makeMonthRequestPromise(cookie, csrfToken, date.MONTH, date.YEAR))
   try {
     const responses = await Promise.all(requests)
     responses.forEach(response => { if (!response.ok) throw new Error(response.status) } )
@@ -114,7 +120,7 @@ async function task(options = { quiet: true }) {
 
   const monthsWithAvailableAppts = results.map((resultHtml, idx) => {
     const $ = cheerio.load(resultHtml)
-    return { month: MONTHS[idx], available: !!$('td[bgcolor="#ffffc0"]').text().trim() }
+    return { month: DATES[idx].MONTH, available: !!$('td[bgcolor="#ffffc0"]').text().trim() }
   })
 
   if (monthsWithAvailableAppts.some(monthObj => monthObj.available)) {
@@ -128,11 +134,53 @@ async function task(options = { quiet: true }) {
   if (options.quiet) { // for running with setInterval
     process.stdout.write('.')
   } else { // for individual runs, or first of a setInterval run
-    console.log(`No available appointments for months ${MONTHS.join(', ')} in ${EMBASSY.displayName} (${EMBASSY.postCode})`)
+    console.log(`No available appointments for months ${DATES.flatMap(e => e.MONTH).join(', ')} in ${EMBASSY.displayName} (${EMBASSY.postCode})`)
   }
 }
 
+function initialize() {
+
+  let currentDate = new Date();
+  let currentYear = currentDate.getFullYear();
+  // month is zero indexed in js but website uses jan = 1
+  let currentMonth = currentDate.getMonth() + 1;
+  // to test the year rollover code
+  // currentMonth = 12;
+
+  for (let i = 0; i < MONTHS_LOOKAHEAD; i++) {
+    DATES.push({
+      YEAR:currentYear,
+      MONTH:currentMonth
+    });
+
+    currentMonth = currentMonth + 1;
+    if (currentMonth > 12) {
+      currentYear = currentYear + 1;
+      currentMonth = 1;
+    }
+  }
+
+  var embassyData = [];
+  for (const e of Object.keys(EMBASSIES)) {
+    embassyData.push({
+      name: EMBASSIES[e].displayName,
+      value: {postCode: EMBASSIES[e].postCode, displayName:EMBASSIES[e].displayName}
+    });
+  }
+
+  inquirer.prompt([
+        {
+          type: 'list',
+          message: 'Which embassy to check?',
+          choices: embassyData,
+          name: "Embassy"
+      }]).then(function(selected) {
+        EMBASSY = selected.Embassy;
+      });
+}
+
 async function main() {
+  initialize()
   task({ quiet: false })
   setInterval(task, CALL_INTERVAL_MS)
 }
