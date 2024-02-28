@@ -7,5 +7,6 @@ Change the integers in the MONTHS array, and the YEAR const for the range that y
 ### Run
 
 ```
+npm update
 npm run start
 ```
