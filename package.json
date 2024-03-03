@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node index.js",
     "start:debug": "NODE_DEBUG=http npm run start",
-    "murder": "kill -9 $(ps aux | grep -e '[n]pm run' -e '[n]ode' | awk '{print $2}')"
+    "murder": "kill -9 $(ps aux | grep -e '[n]pm run' -e '[n]ode' | awk '{print $2}')",
+    "lint": "eslint index.js --ext js,ts,tsx --max-warnings 0",
+    "lint:fix": "npm run lint -- --fix"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +17,11 @@
   "dependencies": {
     "chalk": "^4.1.0",
     "cheerio": "^1.0.0-rc.5",
+    "eslint": "^8.56.0",
+    "eslint-config-recommended": "^4.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-jest": "^27.6.3",
+    "inquirer": "^9.2.15",
     "node-fetch": "^2.6.1",
     "node-notifier": "^9.0.1",
     "puppeteer": "^10.1.0",

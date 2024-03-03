@@ -120,15 +120,15 @@ async function task(options = { quiet: true }) {
   if (monthsWithAvailableAppts.some(monthObj => monthObj.available)) {
     const msg = 'Appointment(s) available!'
     notifier.notify(msg)
-    console.log(chalk.green(`\n${msg}`))
-    console.log(monthsWithAvailableAppts)
+    console.info(chalk.green(`\n${msg}`))
+    console.info(monthsWithAvailableAppts)
     return
   }
 
   if (options.quiet) { // for running with setInterval
     process.stdout.write('.')
   } else { // for individual runs, or first of a setInterval run
-    console.log(`No available appointments for months ${MONTHS.join(', ')} in ${EMBASSY.displayName} (${EMBASSY.postCode})`)
+    console.info(`No available appointments for months ${MONTHS.join(', ')} in ${EMBASSY.displayName} (${EMBASSY.postCode})`)
   }
 }
 
